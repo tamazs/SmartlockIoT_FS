@@ -1,0 +1,3 @@
+﻿from dataaccess folder:
+
+dotnet ef database update --startup-project ../Api
