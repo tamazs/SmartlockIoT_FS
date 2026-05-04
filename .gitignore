@@ -7,6 +7,8 @@
 .env
 appsettings.json
 
+CLAUDE.md
+
 # User-specific files
 *.rsuser
 *.suo

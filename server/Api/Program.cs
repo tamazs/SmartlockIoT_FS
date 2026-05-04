@@ -79,6 +79,7 @@ public class Program
         services.AddCors();
         
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ICodeTypeService, CodeTypeService>();
         
         services.AddProblemDetails();
         services.AddExceptionHandler<GlobalExceptionHandler>();

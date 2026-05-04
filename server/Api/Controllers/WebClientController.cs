@@ -12,6 +12,18 @@ public class WebClientController(ISseBackplane backplane,
     IGroupRealtimeManager groupRealtimeManager
 ) : RealtimeControllerBase(backplane)
 {
+    [HttpGet(nameof(GetLogs))]
+    public async Task<RealtimeListenResponse<List<Log>>> GetLogs(string connectionId)
+    {
+        var group = "logs";
+        await backplane.Groups.AddToGroupAsync(connectionId, group);
+        realtimeManager.Subscribe<AppDbContext>(connectionId, group,
+            criteria: snapshot => snapshot.HasChanges<Log>(),
+            query: async context => context.Logs.ToList()
+        );
+        return new RealtimeListenResponse<List<Log>>(group, db.Logs.ToList());
+    }
+    
     [HttpGet(nameof(GetAlerts))]
     public async Task<RealtimeListenResponse<List<Alert>>> GetAlerts(string connectionId)
     {
