@@ -6,58 +6,42 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/{turbineId}/command": {
+    "/codes": {
       "post": {
         "tags": [
           "Action"
         ],
-        "operationId": "Action_SendCommand",
-        "parameters": [
-          {
-            "name": "turbineId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "x-position": 1
-          }
-        ],
+        "operationId": "Action_AddCode",
         "requestBody": {
-          "x-name": "command",
+          "x-name": "request",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TurbineCommand"
+                "$ref": "#/components/schemas/CreateEntryCodeRequest"
               }
             }
           },
           "required": true,
-          "x-position": 2
+          "x-position": 1
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryCodeDto"
+                }
+              }
+            }
           }
         }
-      }
-    },
-    "/GetActions": {
+      },
       "get": {
         "tags": [
           "Action"
         ],
-        "operationId": "Action_GetActions",
-        "parameters": [
-          {
-            "name": "turbineId",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "x-position": 1
-          }
-        ],
+        "operationId": "Action_GetCodes",
         "responses": {
           "200": {
             "description": "",
@@ -66,8 +50,41 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/TurbineActionDto"
+                    "$ref": "#/components/schemas/EntryCodeDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/codes/{id}": {
+      "delete": {
+        "tags": [
+          "Action"
+        ],
+        "operationId": "Action_DeleteCode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -171,12 +188,142 @@
         }
       }
     },
-    "/GetMeasurements": {
+    "/GetCodeTypes": {
+      "get": {
+        "tags": [
+          "CodeType"
+        ],
+        "operationId": "CodeType_GetCodeTypes",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EntryCodeTypeDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/CreateCodeType": {
+      "post": {
+        "tags": [
+          "CodeType"
+        ],
+        "operationId": "CodeType_CreateCodeType",
+        "requestBody": {
+          "x-name": "request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEntryCodeTypeRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 1
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryCodeTypeDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/{id}": {
+      "put": {
+        "tags": [
+          "CodeType"
+        ],
+        "operationId": "CodeType_UpdateCodeType",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          }
+        ],
+        "requestBody": {
+          "x-name": "request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEntryCodeTypeRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 2
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryCodeTypeDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "CodeType"
+        ],
+        "operationId": "CodeType_DeleteCodeType",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/GetLogs": {
       "get": {
         "tags": [
           "WebClient"
         ],
-        "operationId": "WebClient_GetMeasurements",
+        "operationId": "WebClient_GetLogs",
         "parameters": [
           {
             "name": "connectionId",
@@ -193,7 +340,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RealtimeListenResponseOfListOfMeasurement"
+                  "$ref": "#/components/schemas/RealtimeListenResponseOfListOfLog"
                 }
               }
             }
@@ -247,133 +394,35 @@
   },
   "components": {
     "schemas": {
-      "TurbineCommand": {
-        "type": "object",
-        "discriminator": {
-          "propertyName": "action",
-          "mapping": {
-            "setInterval": "#/components/schemas/SetIntervalCommand",
-            "stop": "#/components/schemas/StopCommand",
-            "start": "#/components/schemas/StartCommand",
-            "setPitch": "#/components/schemas/SetPitchCommand"
-          }
-        },
-        "x-abstract": true,
-        "additionalProperties": false,
-        "required": [
-          "action"
-        ],
-        "properties": {
-          "action": {
-            "type": "string"
-          }
-        }
-      },
-      "SetIntervalCommand": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/TurbineCommand"
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "value"
-            ],
-            "properties": {
-              "value": {
-                "type": "integer",
-                "format": "int32",
-                "maximum": 60.0,
-                "minimum": 1.0
-              }
-            }
-          }
-        ]
-      },
-      "StopCommand": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/TurbineCommand"
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "reason": {
-                "type": "string",
-                "nullable": true
-              }
-            }
-          }
-        ]
-      },
-      "StartCommand": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/TurbineCommand"
-          },
-          {
-            "type": "object",
-            "additionalProperties": false
-          }
-        ]
-      },
-      "SetPitchCommand": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/TurbineCommand"
-          },
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "angle"
-            ],
-            "properties": {
-              "angle": {
-                "type": "number",
-                "format": "double",
-                "maximum": 30.0,
-                "minimum": 0.0
-              }
-            }
-          }
-        ]
-      },
-      "TurbineActionDto": {
+      "EntryCodeDto": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "code": {
             "type": "string"
           },
-          "turbineId": {
-            "type": "string"
+          "codeOwner": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserDto"
+              }
+            ]
           },
-          "userName": {
-            "type": "string"
+          "type": {
+            "$ref": "#/components/schemas/EntryCodeTypeDto"
           },
-          "timestamp": {
+          "expiry": {
             "type": "string",
             "format": "date-time"
           },
-          "actionType": {
-            "type": "string"
-          },
-          "intervalValue": {
+          "useCount": {
             "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "stopReason": {
-            "type": "string",
-            "nullable": true
-          },
-          "pitchAngle": {
-            "type": "number",
-            "format": "double",
-            "nullable": true
+            "format": "int32"
           }
         }
       },
@@ -381,14 +430,62 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "userId": {
-            "type": "string"
+          "id": {
+            "type": "string",
+            "format": "guid"
           },
           "userName": {
             "type": "string"
           },
           "email": {
             "type": "string"
+          }
+        }
+      },
+      "EntryCodeTypeDto": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxUses": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "CreateEntryCodeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "typeId",
+          "expiry"
+        ],
+        "properties": {
+          "typeId": {
+            "type": "string",
+            "format": "guid",
+            "minLength": 1
+          },
+          "codeOwnerId": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
+          },
+          "expiry": {
+            "type": "string",
+            "format": "date-time",
+            "minLength": 1
           }
         }
       },
@@ -461,7 +558,51 @@
           }
         }
       },
-      "RealtimeListenResponseOfListOfMeasurement": {
+      "CreateEntryCodeTypeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxUses": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "UpdateEntryCodeTypeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxUses": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        }
+      },
+      "RealtimeListenResponseOfListOfLog": {
         "allOf": [
           {
             "$ref": "#/components/schemas/RealtimeListenResponse"
@@ -475,75 +616,163 @@
                 "type": "array",
                 "nullable": true,
                 "items": {
-                  "$ref": "#/components/schemas/Measurement"
+                  "$ref": "#/components/schemas/Log"
                 }
               }
             }
           }
         ]
       },
-      "Measurement": {
+      "Log": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "eventType": {
             "type": "string"
           },
-          "turbineId": {
+          "event": {
             "type": "string"
           },
-          "turbineName": {
-            "type": "string"
-          },
-          "farmId": {
-            "type": "string"
-          },
-          "timestamp": {
+          "eventTime": {
             "type": "string",
             "format": "date-time"
           },
-          "windSpeed": {
-            "type": "number",
-            "format": "double"
+          "userId": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
           },
-          "windDirection": {
-            "type": "number",
-            "format": "double"
+          "user": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
           },
-          "ambientTemperature": {
-            "type": "number",
-            "format": "double"
+          "entryCodeId": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
           },
-          "rotorSpeed": {
-            "type": "number",
-            "format": "double"
+          "entryCode": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EntryCode"
+              }
+            ]
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "guid"
           },
-          "powerOutput": {
-            "type": "number",
-            "format": "double"
-          },
-          "nacelleDirection": {
-            "type": "number",
-            "format": "double"
-          },
-          "bladePitch": {
-            "type": "number",
-            "format": "double"
-          },
-          "generatorTemp": {
-            "type": "number",
-            "format": "double"
-          },
-          "gearboxTemp": {
-            "type": "number",
-            "format": "double"
-          },
-          "vibration": {
-            "type": "number",
-            "format": "double"
-          },
-          "status": {
+          "username": {
             "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "passwordHash": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refreshToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "refreshTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "EntryCode": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "codeOwnerId": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
+          },
+          "codeOwner": {
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/User"
+              }
+            ]
+          },
+          "typeId": {
+            "type": "string",
+            "format": "guid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/EntryCodeType"
+          },
+          "expiry": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "useCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "logs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Log"
+            }
+          }
+        }
+      },
+      "EntryCodeType": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "guid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxUses": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "entryCodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EntryCode"
+            }
           }
         }
       },
@@ -583,23 +812,30 @@
         "additionalProperties": false,
         "properties": {
           "id": {
-            "type": "string"
-          },
-          "turbineId": {
-            "type": "string"
-          },
-          "farmId": {
-            "type": "string"
-          },
-          "timestamp": {
             "type": "string",
-            "format": "date-time"
+            "format": "guid"
           },
           "severity": {
             "type": "string"
           },
           "message": {
             "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isResolved": {
+            "type": "boolean"
+          },
+          "resolvedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         }
       }

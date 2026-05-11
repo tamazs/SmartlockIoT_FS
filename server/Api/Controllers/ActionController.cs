@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Api.DTOs;
 using Api.DTOs.Requests;
 using DataAccess;
@@ -11,10 +12,10 @@ namespace Api.Controllers;
 
 [ApiController]
 [Authorize]
-public class ActionController(IMqttClientService mqtt, AppDbContext dbContext) : BaseController
+public class ActionController(IMqttClientService mqtt, AppDbContext dbContext, AppOptions appOptions) : BaseController
 {
     private static readonly Random Rng = new();
-    private const string MqttTopic = "smartlock/codes";
+    private static readonly JsonSerializerOptions JsonOptions = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
     [HttpPost("codes")]
     public async Task<ActionResult<EntryCodeDto>> AddCode([FromBody] CreateEntryCodeRequest request)
@@ -42,8 +43,7 @@ public class ActionController(IMqttClientService mqtt, AppDbContext dbContext) :
         if (entry.CodeOwnerId is not null)
             await dbContext.Entry(entry).Reference(e => e.CodeOwner).LoadAsync();
 
-        var payload = JsonSerializer.Serialize(new { @event = "add", code = entry.Code, expiry = entry.Expiry, typeId = entry.TypeId });
-        await mqtt.PublishAsync(MqttTopic, payload);
+        await PublishAvailableCodes();
 
         return Ok(new EntryCodeDto(entry));
     }
@@ -58,8 +58,7 @@ public class ActionController(IMqttClientService mqtt, AppDbContext dbContext) :
         dbContext.EntryCodes.Remove(entry);
         await dbContext.SaveChangesAsync();
 
-        var payload = JsonSerializer.Serialize(new { @event = "revoke", code = entry.Code });
-        await mqtt.PublishAsync(MqttTopic, payload);
+        await PublishAvailableCodes();
 
         return NoContent();
     }
@@ -74,5 +73,50 @@ public class ActionController(IMqttClientService mqtt, AppDbContext dbContext) :
             .ToListAsync();
 
         return codes.Select(c => new EntryCodeDto(c)).ToList();
+    }
+
+    private async Task PublishAvailableCodes()
+    {
+        var codes = await dbContext.EntryCodes
+            .Include(c => c.Type)
+            .Include(c => c.CodeOwner)
+            .ToListAsync();
+
+        var payload = new
+        {
+            codes = codes.Select(c => new DeviceCodeEntry
+            {
+                Id = c.Id.ToString(),
+                Code = c.Code,
+                CodeOwner = c.CodeOwner?.Username,
+                Type = c.Type.Name.ToLowerInvariant(),
+                Expiry = new DateTimeOffset(c.Expiry, TimeSpan.Zero).ToUnixTimeSeconds(),
+                UseCount = c.UseCount,
+            })
+        };
+
+        var topic = $"smartlock/460749f6-08c8-4f66-bed3-84fc69aa39ce/control/availableCodes";
+        await mqtt.PublishAsync(topic, JsonSerializer.Serialize(payload, JsonOptions));
+    }
+
+    private class DeviceCodeEntry
+    {
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = null!;
+
+        [JsonPropertyName("code")]
+        public string Code { get; set; } = null!;
+
+        [JsonPropertyName("codeOwner")]
+        public string? CodeOwner { get; set; }
+
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = null!;
+
+        [JsonPropertyName("expiry")]
+        public long Expiry { get; set; }
+
+        [JsonPropertyName("usecount")]
+        public int UseCount { get; set; }
     }
 }

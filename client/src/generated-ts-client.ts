@@ -17,49 +17,45 @@ export class ActionClient {
         this.baseUrl = baseUrl ?? "";
     }
 
-    sendCommand(turbineId: string, command: TurbineCommand): Promise<void> {
-        let url_ = this.baseUrl + "/{turbineId}/command";
-        if (turbineId === undefined || turbineId === null)
-            throw new globalThis.Error("The parameter 'turbineId' must be defined.");
-        url_ = url_.replace("{turbineId}", encodeURIComponent("" + turbineId));
+    addCode(request: CreateEntryCodeRequest): Promise<EntryCodeDto> {
+        let url_ = this.baseUrl + "/codes";
         url_ = url_.replace(/[?&]$/, "");
 
-        const content_ = JSON.stringify(command);
+        const content_ = JSON.stringify(request);
 
         let options_: RequestInit = {
             body: content_,
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "Accept": "application/json"
             }
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processSendCommand(_response);
+            return this.processAddCode(_response);
         });
     }
 
-    protected processSendCommand(response: Response): Promise<void> {
+    protected processAddCode(response: Response): Promise<EntryCodeDto> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
-            return;
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as EntryCodeDto;
+            return result200;
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<EntryCodeDto>(null as any);
     }
 
-    getActions(turbineId: string | undefined): Promise<TurbineActionDto[]> {
-        let url_ = this.baseUrl + "/GetActions?";
-        if (turbineId === null)
-            throw new globalThis.Error("The parameter 'turbineId' cannot be null.");
-        else if (turbineId !== undefined)
-            url_ += "turbineId=" + encodeURIComponent("" + turbineId) + "&";
+    getCodes(): Promise<EntryCodeDto[]> {
+        let url_ = this.baseUrl + "/codes";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -70,17 +66,17 @@ export class ActionClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetActions(_response);
+            return this.processGetCodes(_response);
         });
     }
 
-    protected processGetActions(response: Response): Promise<TurbineActionDto[]> {
+    protected processGetCodes(response: Response): Promise<EntryCodeDto[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
-            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as TurbineActionDto[];
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as EntryCodeDto[];
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -88,7 +84,48 @@ export class ActionClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<TurbineActionDto[]>(null as any);
+        return Promise.resolve<EntryCodeDto[]>(null as any);
+    }
+
+    deleteCode(id: string): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/codes/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            headers: {
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processDeleteCode(_response);
+        });
+    }
+
+    protected processDeleteCode(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
     }
 }
 
@@ -214,6 +251,168 @@ export class AuthClient {
     }
 }
 
+export class CodeTypeClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "";
+    }
+
+    getCodeTypes(): Promise<EntryCodeTypeDto[]> {
+        let url_ = this.baseUrl + "/GetCodeTypes";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetCodeTypes(_response);
+        });
+    }
+
+    protected processGetCodeTypes(response: Response): Promise<EntryCodeTypeDto[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as EntryCodeTypeDto[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EntryCodeTypeDto[]>(null as any);
+    }
+
+    createCodeType(request: CreateEntryCodeTypeRequest): Promise<EntryCodeTypeDto> {
+        let url_ = this.baseUrl + "/CreateCodeType";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCreateCodeType(_response);
+        });
+    }
+
+    protected processCreateCodeType(response: Response): Promise<EntryCodeTypeDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as EntryCodeTypeDto;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EntryCodeTypeDto>(null as any);
+    }
+
+    updateCodeType(id: string, request: UpdateEntryCodeTypeRequest): Promise<EntryCodeTypeDto> {
+        let url_ = this.baseUrl + "/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(request);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processUpdateCodeType(_response);
+        });
+    }
+
+    protected processUpdateCodeType(response: Response): Promise<EntryCodeTypeDto> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as EntryCodeTypeDto;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EntryCodeTypeDto>(null as any);
+    }
+
+    deleteCodeType(id: string): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "DELETE",
+            headers: {
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processDeleteCodeType(_response);
+        });
+    }
+
+    protected processDeleteCodeType(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+}
+
 export class WebClientClient {
     private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
     private baseUrl: string;
@@ -224,8 +423,8 @@ export class WebClientClient {
         this.baseUrl = baseUrl ?? "";
     }
 
-    getMeasurements(connectionId: string | undefined): Promise<RealtimeListenResponseOfListOfMeasurement> {
-        let url_ = this.baseUrl + "/GetMeasurements?";
+    getLogs(connectionId: string | undefined): Promise<RealtimeListenResponseOfListOfLog> {
+        let url_ = this.baseUrl + "/GetLogs?";
         if (connectionId === null)
             throw new globalThis.Error("The parameter 'connectionId' cannot be null.");
         else if (connectionId !== undefined)
@@ -240,17 +439,17 @@ export class WebClientClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetMeasurements(_response);
+            return this.processGetLogs(_response);
         });
     }
 
-    protected processGetMeasurements(response: Response): Promise<RealtimeListenResponseOfListOfMeasurement> {
+    protected processGetLogs(response: Response): Promise<RealtimeListenResponseOfListOfLog> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
-            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as RealtimeListenResponseOfListOfMeasurement;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as RealtimeListenResponseOfListOfLog;
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -258,7 +457,7 @@ export class WebClientClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<RealtimeListenResponseOfListOfMeasurement>(null as any);
+        return Promise.resolve<RealtimeListenResponseOfListOfLog>(null as any);
     }
 
     getAlerts(connectionId: string | undefined): Promise<RealtimeListenResponseOfListOfAlert> {
@@ -329,40 +528,32 @@ export class WebClientClient {
     }
 }
 
-export interface TurbineCommand {
-    action: string;
-}
-
-export interface SetIntervalCommand extends TurbineCommand {
-    value: number;
-}
-
-export interface StopCommand extends TurbineCommand {
-    reason: string | undefined;
-}
-
-export interface StartCommand extends TurbineCommand {
-}
-
-export interface SetPitchCommand extends TurbineCommand {
-    angle: number;
-}
-
-export interface TurbineActionDto {
+export interface EntryCodeDto {
     id: string;
-    turbineId: string;
-    userName: string;
-    timestamp: string;
-    actionType: string;
-    intervalValue: number | undefined;
-    stopReason: string | undefined;
-    pitchAngle: number | undefined;
+    code: string;
+    codeOwner: UserDto | undefined;
+    type: EntryCodeTypeDto;
+    expiry: string;
+    useCount: number;
 }
 
 export interface UserDto {
-    userId: string;
+    id: string;
     userName: string;
     email: string;
+}
+
+export interface EntryCodeTypeDto {
+    id: string;
+    name: string;
+    description: string | undefined;
+    maxUses: number | undefined;
+}
+
+export interface CreateEntryCodeRequest {
+    typeId: string;
+    codeOwnerId: string | undefined;
+    expiry: string;
 }
 
 export interface RegisterRequestDto {
@@ -386,33 +577,67 @@ export interface RefreshTokenRequestDto {
     refreshToken: string;
 }
 
+export interface CreateEntryCodeTypeRequest {
+    name: string;
+    description: string | undefined;
+    maxUses: number | undefined;
+}
+
+export interface UpdateEntryCodeTypeRequest {
+    name: string;
+    description: string | undefined;
+    maxUses: number | undefined;
+}
+
 /** Returned by subscribe endpoints so the client knows which SSE group to listen on. */
 export interface RealtimeListenResponse {
     group: string;
 }
 
 /** Returned by subscribe endpoints with initial data. The client receives the current state immediately and knows which SSE group to listen on for subsequent updates. */
-export interface RealtimeListenResponseOfListOfMeasurement extends RealtimeListenResponse {
-    data: Measurement[] | undefined;
+export interface RealtimeListenResponseOfListOfLog extends RealtimeListenResponse {
+    data: Log[] | undefined;
 }
 
-export interface Measurement {
+export interface Log {
     id: string;
-    turbineId: string;
-    turbineName: string;
-    farmId: string;
-    timestamp: string;
-    windSpeed: number;
-    windDirection: number;
-    ambientTemperature: number;
-    rotorSpeed: number;
-    powerOutput: number;
-    nacelleDirection: number;
-    bladePitch: number;
-    generatorTemp: number;
-    gearboxTemp: number;
-    vibration: number;
-    status: string;
+    eventType: string;
+    event: string;
+    eventTime: string;
+    userId: string | undefined;
+    user: User | undefined;
+    entryCodeId: string | undefined;
+    entryCode: EntryCode | undefined;
+}
+
+export interface User {
+    id: string;
+    username: string;
+    email: string;
+    passwordHash: string;
+    createdAt: string;
+    refreshToken: string | undefined;
+    refreshTokenExpiresAt: string | undefined;
+}
+
+export interface EntryCode {
+    id: string;
+    code: string;
+    codeOwnerId: string | undefined;
+    codeOwner: User | undefined;
+    typeId: string;
+    type: EntryCodeType;
+    expiry: string;
+    useCount: number;
+    logs: Log[];
+}
+
+export interface EntryCodeType {
+    id: string;
+    name: string;
+    description: string | undefined;
+    maxUses: number | undefined;
+    entryCodes: EntryCode[];
 }
 
 /** Returned by subscribe endpoints with initial data. The client receives the current state immediately and knows which SSE group to listen on for subsequent updates. */
@@ -422,11 +647,19 @@ export interface RealtimeListenResponseOfListOfAlert extends RealtimeListenRespo
 
 export interface Alert {
     id: string;
-    turbineId: string;
-    farmId: string;
-    timestamp: string;
     severity: string;
     message: string;
+    source: string | undefined;
+    createdAt: string;
+    isResolved: boolean;
+    resolvedAt: string | undefined;
+}
+
+export interface FileResponse {
+    data: Blob;
+    status: number;
+    fileName?: string;
+    headers?: { [name: string]: any };
 }
 
 export class ApiException extends Error {

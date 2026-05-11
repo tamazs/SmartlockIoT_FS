@@ -73,6 +73,13 @@ public class Program
             .AddJwtBearer();
         
         services.AddMqttControllers();
+        // Remove the built-in hosted service — MqttListenerService handles
+        // connection + subscription in the correct order to avoid a race condition
+        // in the library's message handler dictionary.
+        var mqttHostedService = services.SingleOrDefault(d => d.ImplementationType == typeof(MqttControllerHostedService));
+        if (mqttHostedService != null) services.Remove(mqttHostedService);
+        services.AddHostedService<MqttListenerService>();
+
         services.AddControllers();
         services.AddOpenApi();
         services.AddOpenApiDocument();
@@ -101,10 +108,7 @@ public class Program
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
-        
-        var mqttClient = app.Services.GetRequiredService<IMqttClientService>();
-        await mqttClient.ConnectAsync(appOptions.MqttBroker);
-        
+
         app.GenerateApiClientsFromOpenApi("/../../client/src/generated-ts-client.ts");
         app.Run();
     }
