@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Api.DTOs;
@@ -6,13 +7,14 @@ using DataAccess;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Mqtt.Controllers;
+using MQTTnet;
+using MQTTnet.Client;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Authorize]
-public class ActionController(IMqttClientService mqtt, AppDbContext dbContext, AppOptions appOptions) : BaseController
+public class ActionController(IMqttClient mqtt, AppDbContext dbContext, AppOptions appOptions) : BaseController
 {
     private static readonly Random Rng = new();
     private static readonly JsonSerializerOptions JsonOptions = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
@@ -95,8 +97,12 @@ public class ActionController(IMqttClientService mqtt, AppDbContext dbContext, A
             })
         };
 
-        var topic = $"smartlock/460749f6-08c8-4f66-bed3-84fc69aa39ce/control/availableCodes";
-        await mqtt.PublishAsync(topic, JsonSerializer.Serialize(payload, JsonOptions));
+        var topic = $"smartlock/{appOptions.MqttDeviceId}/control/availableCodes";
+        var message = new MqttApplicationMessageBuilder()
+            .WithTopic(topic)
+            .WithPayload(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload, JsonOptions)))
+            .Build();
+        await mqtt.PublishAsync(message);
     }
 
     private class DeviceCodeEntry

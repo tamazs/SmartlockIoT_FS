@@ -1,37 +1,72 @@
+using System.Text;
 using System.Text.Json;
 using Api.DTOs.Mqtt;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
-using Mqtt.Controllers;
+using MQTTnet;
+using MQTTnet.Client;
 
 namespace Api;
 
 public class MqttListenerService(
-    IMqttClientService mqtt,
+    IMqttClient mqtt,
     IServiceScopeFactory scopeFactory,
     AppOptions options,
     ILogger<MqttListenerService> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        var deviceId = options.MqttUsername;
+        try
+        {
+            var deviceId = options.MqttDeviceId;
+            logger.LogInformation("MQTT connecting to {Broker}:{Port} as {Username}",
+                options.MqttBroker, options.MqttPort, options.MqttUsername);
 
-        // Register handlers BEFORE subscribing so no message can arrive
-        // while the dictionary is still being populated.
-        mqtt.RegisterHandler($"smartlock/{deviceId}/state", HandleState);
-        mqtt.RegisterHandler($"smartlock/{deviceId}/wrong-code-entry", HandleWrongCodeEntry);
-        mqtt.RegisterHandler($"smartlock/{deviceId}/errors", HandleError);
+            mqtt.ApplicationMessageReceivedAsync += OnMessageReceived;
 
-        await mqtt.ConnectAsync(options.MqttBroker, options.MqttPort, options.MqttUsername, options.MqttPassword);
+            var mqttOptions = new MqttClientOptionsBuilder()
+                .WithTcpServer(options.MqttBroker, options.MqttPort)
+                .WithCredentials(options.MqttUsername, options.MqttPassword)
+                .WithCleanSession()
+                .Build();
 
-        await mqtt.SubscribeAsync($"smartlock/{deviceId}/state");
-        await mqtt.SubscribeAsync($"smartlock/{deviceId}/wrong-code-entry");
-        await mqtt.SubscribeAsync($"smartlock/{deviceId}/errors");
+            var result = await mqtt.ConnectAsync(mqttOptions, cancellationToken);
+            logger.LogInformation("MQTT connected. ResultCode={ResultCode}", result.ResultCode);
+
+            await mqtt.SubscribeAsync($"smartlock/{deviceId}/state", cancellationToken: cancellationToken);
+            await mqtt.SubscribeAsync($"smartlock/{deviceId}/wrong-code-entry", cancellationToken: cancellationToken);
+            await mqtt.SubscribeAsync($"smartlock/{deviceId}/errors", cancellationToken: cancellationToken);
+            logger.LogInformation("MQTT subscriptions active for device {DeviceId}", deviceId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "MQTT startup failed");
+            throw;
+        }
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (mqtt.IsConnected)
+            await mqtt.DisconnectAsync(cancellationToken: cancellationToken);
+    }
 
-    private async Task HandleState(string topic, string payload)
+    private async Task OnMessageReceived(MqttApplicationMessageReceivedEventArgs e)
+    {
+        var topic = e.ApplicationMessage.Topic;
+        var payload = Encoding.UTF8.GetString(e.ApplicationMessage.PayloadSegment);
+        logger.LogInformation("MQTT message on {Topic}: {Payload}", topic, payload);
+
+        var deviceId = options.MqttDeviceId;
+        if (topic == $"smartlock/{deviceId}/state")
+            await HandleState(payload);
+        else if (topic == $"smartlock/{deviceId}/wrong-code-entry")
+            await HandleWrongCodeEntry(payload);
+        else if (topic == $"smartlock/{deviceId}/errors")
+            await HandleError(payload);
+    }
+
+    private async Task HandleState(string payload)
     {
         try
         {
@@ -58,7 +93,7 @@ public class MqttListenerService(
         }
     }
 
-    private async Task HandleWrongCodeEntry(string topic, string payload)
+    private async Task HandleWrongCodeEntry(string payload)
     {
         try
         {
@@ -80,7 +115,7 @@ public class MqttListenerService(
         }
     }
 
-    private async Task HandleError(string topic, string payload)
+    private async Task HandleError(string payload)
     {
         try
         {

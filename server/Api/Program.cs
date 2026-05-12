@@ -5,7 +5,8 @@ using DataAccess;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Mqtt.Controllers;
+using MQTTnet;
+using MQTTnet.Client;
 using StackExchange.Redis;
 using StateleSSE.AspNetCore;
 using StateleSSE.AspNetCore.Extensions;
@@ -72,12 +73,7 @@ public class Program
             })
             .AddJwtBearer();
         
-        services.AddMqttControllers();
-        // Remove the built-in hosted service — MqttListenerService handles
-        // connection + subscription in the correct order to avoid a race condition
-        // in the library's message handler dictionary.
-        var mqttHostedService = services.SingleOrDefault(d => d.ImplementationType == typeof(MqttControllerHostedService));
-        if (mqttHostedService != null) services.Remove(mqttHostedService);
+        services.AddSingleton<IMqttClient>(_ => new MqttFactory().CreateMqttClient());
         services.AddHostedService<MqttListenerService>();
 
         services.AddControllers();

@@ -72,7 +72,7 @@ public class AuthServiceTests(DatabaseFixture fixture) : DatabaseTest(fixture)
         });
 
         var user = await DbContext.Users.FirstAsync(u => u.Email == "guid@example.com");
-        Assert.True(Guid.TryParse(user.UserId, out _));
+        Assert.True(Guid.TryParse(user.Id, out _));
     }
 
     // --- Login ---
