@@ -45,6 +45,17 @@ public class ActionController(IMqttClient mqtt, AppDbContext dbContext, AppOptio
         if (entry.CodeOwnerId is not null)
             await dbContext.Entry(entry).Reference(e => e.CodeOwner).LoadAsync();
 
+        var userId = CurrentUserId is not null ? Guid.Parse(CurrentUserId) : (Guid?)null;
+        await dbContext.Logs.AddAsync(new Log
+        {
+            EventType = "CODE",
+            Event = "CREATED",
+            EventTime = DateTime.UtcNow,
+            UserId = userId,
+            EntryCodeId = entry.Id,
+        });
+        await dbContext.SaveChangesAsync();
+
         await PublishAvailableCodes();
 
         return Ok(new EntryCodeDto(entry));
@@ -57,7 +68,16 @@ public class ActionController(IMqttClient mqtt, AppDbContext dbContext, AppOptio
         if (entry is null)
             return NotFound();
 
+        var userId = CurrentUserId is not null ? Guid.Parse(CurrentUserId) : (Guid?)null;
+
         dbContext.EntryCodes.Remove(entry);
+        await dbContext.Logs.AddAsync(new Log
+        {
+            EventType = "CODE",
+            Event = "DELETED",
+            EventTime = DateTime.UtcNow,
+            UserId = userId,
+        });
         await dbContext.SaveChangesAsync();
 
         await PublishAvailableCodes();
@@ -77,7 +97,7 @@ public class ActionController(IMqttClient mqtt, AppDbContext dbContext, AppOptio
         return codes.Select(c => new EntryCodeDto(c)).ToList();
     }
 
-    private async Task PublishAvailableCodes()
+    internal async Task PublishAvailableCodes()
     {
         var codes = await dbContext.EntryCodes
             .Include(c => c.Type)
@@ -105,7 +125,7 @@ public class ActionController(IMqttClient mqtt, AppDbContext dbContext, AppOptio
         await mqtt.PublishAsync(message);
     }
 
-    private class DeviceCodeEntry
+    internal class DeviceCodeEntry
     {
         [JsonPropertyName("id")]
         public string Id { get; set; } = null!;

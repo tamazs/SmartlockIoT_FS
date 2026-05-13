@@ -17,8 +17,7 @@
     "react-dom": "^19.1.1",
     "react-hot-toast": "^2.6.0",
     "react-router": "^7.13.1",
-    "recharts": "^3.7.0",
-    "statele-sse": "^0.1.2",
+"statele-sse": "^0.1.2",
     "tailwindcss": "^4.2.1"
   },
   "devDependencies": {

@@ -1,23 +1,18 @@
 import { NavLink } from "react-router";
-import {loggedInUserAtom, turbinesAtom} from "../../atoms/atom.ts";
-import {useAtom} from "jotai";
+import { loggedInUserAtom } from "../../atoms/atom.ts";
+import { useAtom } from "jotai";
 import useApi from "../../hooks/useApi.ts";
 
 export default function Sidebar() {
     const [loggedInUser] = useAtom(loggedInUserAtom);
     const api = useApi();
-    const [turbines] = useAtom(turbinesAtom);
 
     return (
         <aside className="w-64 min-h-screen bg-base-100 border-r border-base-300 flex flex-col">
             {/* Brand */}
             <div className="px-6 py-5 border-b border-base-300">
-                <div className="flex items-center gap-2">
-                    <div>
-                        <div className="font-bold text-sm leading-none">FS+IoT</div>
-                        <div className="text-xs text-base-content/50 mt-0.5">Control Centre</div>
-                    </div>
-                </div>
+                <div className="font-bold text-sm leading-none">SmartLock IoT</div>
+                <div className="text-xs text-base-content/50 mt-0.5">Control Centre</div>
             </div>
 
             {/* Nav */}
@@ -41,21 +36,37 @@ export default function Sidebar() {
                 </NavLink>
 
                 <div className="pt-4">
-                    <p className="px-3 text-xs font-semibold text-base-content/40 uppercase tracking-wider mb-2">Turbines</p>
-                    {turbines.map(({ id, name }) => (
-                        <NavLink
-                            key={id}
-                            to={`/turbine/${id}`}
-                            className={({ isActive }) =>
-                                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                                    isActive ? "bg-primary text-primary-content" : "hover:bg-base-200"
-                                }`
-                            }
-                        >
-                            <span className="w-2 h-2 rounded-full bg-success inline-block" />
-                            {name}
-                        </NavLink>
-                    ))}
+                    <p className="px-3 text-xs font-semibold text-base-content/40 uppercase tracking-wider mb-2">Management</p>
+
+                    <NavLink
+                        to="/codes"
+                        className={({ isActive }) =>
+                            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                                isActive ? "bg-primary text-primary-content" : "hover:bg-base-200"
+                            }`
+                        }
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                  d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        </svg>
+                        Entry Codes
+                    </NavLink>
+
+                    <NavLink
+                        to="/code-types"
+                        className={({ isActive }) =>
+                            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                                isActive ? "bg-primary text-primary-content" : "hover:bg-base-200"
+                            }`
+                        }
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                  d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
+                        </svg>
+                        Code Types
+                    </NavLink>
                 </div>
             </nav>
 

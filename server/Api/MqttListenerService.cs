@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Api.DTOs.Mqtt;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,8 @@ public class MqttListenerService(
     AppOptions options,
     ILogger<MqttListenerService> logger) : IHostedService
 {
+    private static readonly JsonSerializerOptions JsonOptions = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         try
@@ -86,6 +89,35 @@ public class MqttListenerService(
                 UserId = user?.Id,
             });
             await db.SaveChangesAsync();
+
+            // Track code usage when the device reports which code was used
+            if (data.Source is not null)
+            {
+                var usedCode = Guid.TryParse(data.Source, out var codeId)
+                    ? await db.EntryCodes.Include(c => c.Type).FirstOrDefaultAsync(c => c.Id == codeId)
+                    : await db.EntryCodes.Include(c => c.Type).FirstOrDefaultAsync(c => c.Code == data.Source);
+
+                if (usedCode is not null)
+                {
+                    usedCode.UseCount++;
+                    await db.SaveChangesAsync();
+
+                    if (usedCode.Type.MaxUses is not null && usedCode.UseCount >= usedCode.Type.MaxUses)
+                    {
+                        await db.Logs.AddAsync(new Log
+                        {
+                            EventType = "CODE",
+                            Event = "MAX USES REACHED",
+                            EventTime = DateTime.UtcNow,
+                            UserId = user?.Id,
+                        });
+                        db.EntryCodes.Remove(usedCode);
+                        await db.SaveChangesAsync();
+
+                        await PublishAvailableCodes(db);
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -140,6 +172,34 @@ public class MqttListenerService(
         {
             logger.LogError(ex, "Error handling error message: {Payload}", payload);
         }
+    }
+
+    private async Task PublishAvailableCodes(AppDbContext db)
+    {
+        var codes = await db.EntryCodes
+            .Include(c => c.Type)
+            .Include(c => c.CodeOwner)
+            .ToListAsync();
+
+        var payload = new
+        {
+            codes = codes.Select(c => new
+            {
+                id = c.Id.ToString(),
+                code = c.Code,
+                codeOwner = c.CodeOwner?.Username,
+                type = c.Type.Name.ToLowerInvariant(),
+                expiry = new DateTimeOffset(c.Expiry, TimeSpan.Zero).ToUnixTimeSeconds(),
+                usecount = c.UseCount,
+            })
+        };
+
+        var topic = $"smartlock/{options.MqttDeviceId}/control/availableCodes";
+        var message = new MqttApplicationMessageBuilder()
+            .WithTopic(topic)
+            .WithPayload(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload, JsonOptions)))
+            .Build();
+        await mqtt.PublishAsync(message);
     }
 
     private static DateTime EpochToDateTime(long epoch) =>

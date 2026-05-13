@@ -1,5 +1,6 @@
 using DataAccess;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using StateleSSE.AspNetCore;
 using StateleSSE.AspNetCore.EfRealtime;
 using StateleSSE.AspNetCore.GroupRealtime;
@@ -19,9 +20,9 @@ public class WebClientController(ISseBackplane backplane,
         await backplane.Groups.AddToGroupAsync(connectionId, group);
         realtimeManager.Subscribe<AppDbContext>(connectionId, group,
             criteria: snapshot => snapshot.HasChanges<Log>(),
-            query: async context => context.Logs.ToList()
+            query: async context => context.Logs.Include(l => l.User).AsNoTracking().ToList()
         );
-        return new RealtimeListenResponse<List<Log>>(group, db.Logs.ToList());
+        return new RealtimeListenResponse<List<Log>>(group, db.Logs.Include(l => l.User).AsNoTracking().ToList());
     }
     
     [HttpGet(nameof(GetAlerts))]

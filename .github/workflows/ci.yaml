@@ -1,0 +1,40 @@
+﻿name: Continuous Integration
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: ["main"]
+
+jobs:
+  client_build_job:
+    name: Client build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+      - name: Install dependencies
+        run: npm ci --prefix=client
+      - name: Build
+        run: npm run build --prefix=client
+
+  server_test_job:
+    name: Server test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.x"
+          dotnet-quality: 'preview'
+      - name: Build
+        run: dotnet build
+      - name: Test
+        run: dotnet test

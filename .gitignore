@@ -6,7 +6,7 @@
 # dotenv files
 .env
 appsettings.json
-
+.claude
 CLAUDE.md
 
 # User-specific files

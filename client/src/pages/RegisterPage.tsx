@@ -22,7 +22,7 @@ export default function RegisterPage() {
                     <div className="flex items-center justify-center gap-2 mb-2">
                         <span className="text-2xl font-bold tracking-tight">FS+IoT</span>
                     </div>
-                    <p className="text-base-content/60 text-sm">Wind Turbine Control Centre</p>
+                    <p className="text-base-content/60 text-sm">SmartLock IoT</p>
                 </div>
 
                 <div className="card bg-base-100 shadow-xl">
