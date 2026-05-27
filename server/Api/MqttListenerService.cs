@@ -198,6 +198,7 @@ public class MqttListenerService(
         var message = new MqttApplicationMessageBuilder()
             .WithTopic(topic)
             .WithPayload(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload, JsonOptions)))
+            .WithRetainFlag(true)
             .Build();
         await mqtt.PublishAsync(message);
     }
