@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Api.DTOs.Mqtt;
 using DataAccess;
 using Microsoft.EntityFrameworkCore;
@@ -13,9 +12,9 @@ public class MqttListenerService(
     IMqttClient mqtt,
     IServiceScopeFactory scopeFactory,
     AppOptions options,
+    MqttPublisherService mqttPublisher,
     ILogger<MqttListenerService> logger) : IHostedService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -114,7 +113,7 @@ public class MqttListenerService(
                         db.EntryCodes.Remove(usedCode);
                         await db.SaveChangesAsync();
 
-                        await PublishAvailableCodes(db);
+                        await mqttPublisher.PublishAvailableCodes();
                     }
                 }
             }
@@ -172,35 +171,6 @@ public class MqttListenerService(
         {
             logger.LogError(ex, "Error handling error message: {Payload}", payload);
         }
-    }
-
-    private async Task PublishAvailableCodes(AppDbContext db)
-    {
-        var codes = await db.EntryCodes
-            .Include(c => c.Type)
-            .Include(c => c.CodeOwner)
-            .ToListAsync();
-
-        var payload = new
-        {
-            codes = codes.Select(c => new
-            {
-                id = c.Id.ToString(),
-                code = c.Code,
-                codeOwner = c.CodeOwner?.Username,
-                type = c.Type.Name.ToLowerInvariant(),
-                expiry = new DateTimeOffset(c.Expiry, TimeSpan.Zero).ToUnixTimeSeconds(),
-                usecount = c.UseCount,
-            })
-        };
-
-        var topic = $"smartlock/{options.MqttDeviceId}/control/availableCodes";
-        var message = new MqttApplicationMessageBuilder()
-            .WithTopic(topic)
-            .WithPayload(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload, JsonOptions)))
-            .WithRetainFlag(true)
-            .Build();
-        await mqtt.PublishAsync(message);
     }
 
     private static DateTime EpochToDateTime(long epoch) =>

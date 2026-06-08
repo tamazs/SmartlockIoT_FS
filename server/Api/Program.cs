@@ -74,6 +74,7 @@ public class Program
             .AddJwtBearer();
         
         services.AddSingleton<IMqttClient>(_ => new MqttFactory().CreateMqttClient());
+        services.AddSingleton<MqttPublisherService>();
         services.AddHostedService<MqttListenerService>();
 
         services.AddControllers();

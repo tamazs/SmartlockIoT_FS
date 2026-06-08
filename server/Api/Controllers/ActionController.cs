@@ -1,23 +1,17 @@
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Api.DTOs;
 using Api.DTOs.Requests;
 using DataAccess;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using MQTTnet;
-using MQTTnet.Client;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Authorize]
-public class ActionController(IMqttClient mqtt, AppDbContext dbContext, AppOptions appOptions) : BaseController
+public class ActionController(AppDbContext dbContext, MqttPublisherService mqttPublisher) : BaseController
 {
     private static readonly Random Rng = new();
-    private static readonly JsonSerializerOptions JsonOptions = new() { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
 
     [HttpPost("codes")]
     public async Task<ActionResult<EntryCodeDto>> AddCode([FromBody] CreateEntryCodeRequest request)
@@ -56,7 +50,7 @@ public class ActionController(IMqttClient mqtt, AppDbContext dbContext, AppOptio
         });
         await dbContext.SaveChangesAsync();
 
-        await PublishAvailableCodes();
+        await mqttPublisher.PublishAvailableCodes();
 
         return Ok(new EntryCodeDto(entry));
     }
@@ -80,7 +74,7 @@ public class ActionController(IMqttClient mqtt, AppDbContext dbContext, AppOptio
         });
         await dbContext.SaveChangesAsync();
 
-        await PublishAvailableCodes();
+        await mqttPublisher.PublishAvailableCodes();
 
         return NoContent();
     }
@@ -97,52 +91,4 @@ public class ActionController(IMqttClient mqtt, AppDbContext dbContext, AppOptio
         return codes.Select(c => new EntryCodeDto(c)).ToList();
     }
 
-    internal async Task PublishAvailableCodes()
-    {
-        var codes = await dbContext.EntryCodes
-            .Include(c => c.Type)
-            .Include(c => c.CodeOwner)
-            .ToListAsync();
-
-        var payload = new
-        {
-            codes = codes.Select(c => new DeviceCodeEntry
-            {
-                Id = c.Id.ToString(),
-                Code = c.Code,
-                CodeOwner = c.CodeOwner?.Username,
-                Type = c.Type.Name.ToLowerInvariant(),
-                Expiry = new DateTimeOffset(c.Expiry, TimeSpan.Zero).ToUnixTimeSeconds(),
-                UseCount = c.UseCount,
-            })
-        };
-
-        var topic = $"smartlock/{appOptions.MqttDeviceId}/control/availableCodes";
-        var message = new MqttApplicationMessageBuilder()
-            .WithTopic(topic)
-            .WithPayload(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(payload, JsonOptions)))
-            .Build();
-        await mqtt.PublishAsync(message);
-    }
-
-    internal class DeviceCodeEntry
-    {
-        [JsonPropertyName("id")]
-        public string Id { get; set; } = null!;
-
-        [JsonPropertyName("code")]
-        public string Code { get; set; } = null!;
-
-        [JsonPropertyName("codeOwner")]
-        public string? CodeOwner { get; set; }
-
-        [JsonPropertyName("type")]
-        public string Type { get; set; } = null!;
-
-        [JsonPropertyName("expiry")]
-        public long Expiry { get; set; }
-
-        [JsonPropertyName("usecount")]
-        public int UseCount { get; set; }
-    }
 }
